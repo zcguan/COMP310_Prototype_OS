@@ -1,0 +1,2 @@
+set z s3z
+print z

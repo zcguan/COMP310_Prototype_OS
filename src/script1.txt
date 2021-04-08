@@ -1,0 +1,2 @@
+set x s1x
+print x

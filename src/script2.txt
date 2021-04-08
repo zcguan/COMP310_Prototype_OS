@@ -1,0 +1,10 @@
+set y s2y
+print y
+set x s2x
+print x
+set z s2z
+print z
+set a s2a
+print a
+set b s2b
+print b
