@@ -1,12 +1,13 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include"shell.h"
-#include"pcb.h"
-#include"ram.h"
-#include"cpu.h"
-#include"interpreter.h"
-#include"memorymanager.h"
+#include "shell.h"
+#include "pcb.h"
+#include "ram.h"
+#include "cpu.h"
+#include "interpreter.h"
+#include "memorymanager.h"
+#include "DISK_driver.h"
 
 /*
 This is a node in the Ready Queue implemented as 
@@ -181,6 +182,7 @@ void emptyReadyQueue(){
 
 void boot(){
     resetRAM(); // clear ram
+    initIO();
     system("rm -rf BackingStore; mkdir BackingStore");// prepare Backing Store
 }
 

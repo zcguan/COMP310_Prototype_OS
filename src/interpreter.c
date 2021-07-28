@@ -1,11 +1,12 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
-#include"shellmemory.h"
-#include"shell.h"
-#include"kernel.h"
-#include"memorymanager.h"
-#include"ram.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "shellmemory.h"
+#include "shell.h"
+#include "kernel.h"
+#include "memorymanager.h"
+#include "ram.h"
+#include "DISK_driver.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -138,6 +139,66 @@ int exec(char * words[]){
     return 0;
 }
 
+int mount(char *words[])
+{
+    int err = 0;
+    char *partitionName = words[1];
+    int numBlocks = atoi(words[2]);
+    int blockSize = atoi(words[3]);
+    
+    char fname[100];
+    sprintf(fname, "PARTITION/%s", partitionName);
+    FILE *f = fopen(fname,"r");
+    if (f == NULL){ // file doesn't exists
+        err = partition(partitionName, blockSize, numBlocks);
+    }
+    else{
+        fclose(f);
+        err = mountFS(partitionName);
+    }
+
+    return err;
+}
+
+/*
+read file content to a variable
+*/
+int read(char *words[])
+{
+    char *fname = words[1];
+    char *var = words[2];
+    
+    int file = openfile(fname);
+    char value[999] = {0};
+    char *content = readBlock(file);
+    // read until eof
+    while (content != NULL){
+        strcat(value,content);
+        content = readBlock(file);
+    }
+
+    closefile(file);
+    // set var
+    return setVariable(var, value);
+}
+
+/*
+write a string content to a file
+*/
+int write(char *words[])
+{
+    char *fname = words[1];
+    char *content = words[2];
+    int file = openfile(fname);
+    int err = writeBlock(file, content);
+    closefile(file);
+    if (err != 0){
+        return -6;
+    }
+    return 0;
+}
+
+
 /*
 This functions takes a parsed version of the user input.
 It will interpret the valid commands or return a bad error code if the command failed for some reason
@@ -165,13 +226,16 @@ int interpreter(char* words[]){
         printf("print VAR\t\t\tDisplays the STRING value assigned to the shell memory variable VAR\n");
         printf("run SCRIPT.TXT\t\t\tExecutes the file SCRIPT.txt\n");
         printf("exec p1 p2 p3\t\t\tExecutes programs p1 p2 p3 concurrently\n");
+        printf("mount partitionName number_of_blocks block_size\t\t\tMount a partition with specified arguments\n");
+        printf("write filename [a collection of words]\t\t\tWrite words to filename\n");
+        printf("read filename variable\t\t\tRead the content of filename into variable\n");
         printf("-------------------------------------------------------------------------------------------------------\n");
 
     } else if ( strcmp(words[0],"quit") == 0) {
 
         // if it's the "quit" command
         //errorCode is 1 when user voluntarily wants to quit the program.
-        exit(1);
+        errorCode = 1;
 
     } else if ( strcmp(words[0],"set") == 0 ) {
         // if it's the "set VAR STRING" command
@@ -201,11 +265,40 @@ int interpreter(char* words[]){
         errorCode = run(words);
     } else if ( strcmp(words[0],"exec") == 0 ) {
         // if it's the "exec" command
-        // check if there's at least 2 arguments and not >= 4 arguments
+        // check if there's at least 1 arguments and not >= 4 arguments
         if ( strcmp(words[1],"_NONE_") == 0  || strcmp(words[4],"_NONE_") != 0 ) return -2;
 
         errorCode = exec(words);
-    } else {
+    }
+    else if (strcmp(words[0], "mount") == 0)
+    {
+        // if it's the "mount" command
+        // check if there are exactly 2 arguments
+        if (strcmp(words[1], "_NONE_") == 0 || strcmp(words[2], "_NONE_") == 0 || strcmp(words[3], "_NONE_") == 0 || strcmp(words[4], "_NONE_") != 0)
+            return -2;
+
+        errorCode = mount(words);
+    }
+    else if (strcmp(words[0], "write") == 0)
+    {
+        // if it's the "read" command
+        // check if there are exactly 2 arguments
+        if (strcmp(words[1], "_NONE_") == 0 || strcmp(words[2], "_NONE_") == 0 || strcmp(words[3], "_NONE_") != 0)
+            return -2;
+
+        errorCode = write(words);
+    }
+    else if (strcmp(words[0], "read") == 0)
+    {
+        // if it's the "read" command
+        // check if there are exactly 2 arguments
+        if (strcmp(words[1], "_NONE_") == 0 || strcmp(words[2], "_NONE_") == 0 || strcmp(words[3], "_NONE_") != 0)
+            return -2;
+
+        errorCode = read(words);
+    }
+    else
+    {
         // Error code for unknown command
         errorCode = -4;
     }

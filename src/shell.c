@@ -11,7 +11,7 @@ ERRORCODE -2 : INCORRECT NUMBER OF ARGUMENTS
 ERRORCODE -3 : SCRIPT NOT FOUND
 ERRORCODE -4 : UNKNOWN COMMAND.
 ERRORCODE -5 : NOT ENOUGH RAM (EXEC)
-ERRORCODE -6 : SCRIPT <NAME> ALREADY LOADED (EXEC)
+ERRORCODE -6 : FS ERROR
 */
 void displayCode(int errorCode, char *command)
 {
@@ -33,7 +33,7 @@ void displayCode(int errorCode, char *command)
         printf("ERRORCODE -5 : NOT ENOUGH RAM TO ADD PROGRAM.'%s'\n", command);
         break;
     case -6:
-        printf("ERRORCODE -6 : %s ALREADY LOADED \n", command);
+        printf("ERRORCODE -6 : %s FS ERROR \n", command);
         break;
     }
 
@@ -42,27 +42,61 @@ void displayCode(int errorCode, char *command)
 
 int parse(char ui[])
 {
-    //printf("In Parser: '%s'",ui);
+    // printf("In Parser: '%s'",ui);
     char tmp[200];
     int a, b;
     char *words[10];
     int w = 0; // wordsIdx
+    int string = 0;
+    char openDelim[] = {'\"', '['};
+    char closingDelim[] = {'\"', ']'};
+    int delimi = 0;
+
+    // init token array
     for (int i = 0; i < 10; i++)
     {
         words[i] = "_NONE_";
     }
-    for (a = 0; ui[a] == ' ' && a < 1000; a++)
-        ; // skip white spaces
+
+    // skip leading white spaces
+    for (a = 0; ui[a] == ' ' && a < 1000; a++); 
+        
+
     while (ui[a] != '\0' && ui[a] != '\n' && a < 1000)
     {
-        for (b = 0; ui[a] != '\0' && ui[a] != '\n' && ui[a] != '\r' && ui[a] != ' ' && a < 1000; a++, b++)
-            tmp[b] = ui[a]; // extract a word
-        tmp[b] = '\0';
-        words[w] = strdup(tmp);
+        if (string)
+        {
+            for (b = 0; ui[a] != '\0' && ui[a] != closingDelim[delimi] && a < 1000; a++, b++)
+                tmp[b] = ui[a]; // read until closing "
+            tmp[b] = '\0';
+            words[w] = strdup(tmp);
+            string = 0; // end of string
+            a++;        // skip delimiter
+        }
+        else
+        {
+            for (b = 0; ui[a] != '\0' && ui[a] != '\n' && ui[a] != '\r' && ui[a] != ' ' && a < 1000; a++, b++)
+                tmp[b] = ui[a]; // extract a word
+            tmp[b] = '\0';
+            words[w] = strdup(tmp);
+        }
+
         if (ui[a] == '\0' || ui[a] == '\n' || ui[a] == '\r')
             break;
+
         for (; ui[a] == ' ' && a < 1000; a++)
             ; // skip white spaces
+
+        // check if beginning of string
+        for (int i = 0; i < sizeof(openDelim); i++)
+        {
+            if (ui[a] == openDelim[i])
+            {
+                string = 1; // start of a string
+                a++;        // skip delimiter
+                delimi = i; // set delimiter index
+            }
+        }
         w++;
     }
     return (interpreter(words));
